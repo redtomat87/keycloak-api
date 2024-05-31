@@ -1,7 +1,8 @@
 # delete users testing 
+import os
 import common, requests, json
 from vars.creds import password, client_id
-from vars.env_vars import users_url_query_params, users_url, token_url, username, users_to_keep, client_scopes_url
+from vars.env_vars import users_url_query_params, users_url, token_url, username, users_to_keep, client_scopes_url, page_size
 
 log = common.logging.getLogger(__name__)
 common.configure_logging()
@@ -39,18 +40,37 @@ def get_access_token():
     return access_token
 
 def get_users(headers, **kwargs):
-    try:
-        users_response = requests.get(users_url, headers=headers, params=users_url_query_params)
-        users_response.raise_for_status()
-        list_of_users = users_response.json()
-     #   print(f"Список пользователей: {list_of_users}")
+    users_file_path = 'list_of_users.json'
+    users_url_query_params['briefRepresentation'] = 'True'
+    log.debug("Users_url_query_params: %s", users_url_query_params)
+    pagination = 0
+    if os.path.isfile(users_file_path):
         with open('list_of_users.json', 'w') as json_file:
-           json_file.truncate(0) 
-           json.dump(list_of_users, json_file)
-    except requests.exceptions.HTTPError as e:
-        print(f"HTTP исключение: {e}\n Ответ сервера: {users_response.text} \n Сатус код: {users_response.status_code}")
-        raise
+            json_file.truncate(0) 
+    while True:
+        try:
+            users_url_query_params['first'] = pagination
+            log.debug("query starts")
+            users_response = requests.get(users_url, headers=headers, params=users_url_query_params)
+            log.debug("query responce: %s ", users_response.status_code)
+            users_response.raise_for_status()
+            list_of_users = users_response.json()
+         #   print(f"Список пользователей: {list_of_users}")
+            with open('list_of_users.json', 'a') as json_file:
+               json.dump(list_of_users, json_file)
+            print(repr(pagination))
+            print(repr(page_size))
+            print(repr(len(list_of_users)))
+            pagination += page_size
+        #    all_users = all_users.extend(list_of_users)
+       #     log.info("Найдено пользователей: %" {len(all_users)})
+            if len(list_of_users) < page_size:
+                break
+        except requests.exceptions.HTTPError as e:
+            print(f"HTTP исключение: {e}\n Ответ сервера: {users_response.text} \n Сатус код: {users_response.status_code}")
+            raise
     return list_of_users
+    
 
 def delete_users(list_of_users, **kwargs):
     confirmation = input("Вы уверены, что хотите удалить пользователей? Введите 'YES IM SURE' для подтверждения: ")
@@ -88,7 +108,7 @@ def get_disabled_users():
 if __name__ == "__main__":    
     access_token = get_access_token()
     headers = set_headers(access_token)
-    get_client_scopes()
-  #  list_of_users = get_users(headers=headers)
+  #  get_client_scopes()
+    list_of_users = get_users(headers=headers)
   #  list_of_disabled_users = get_disabled_users()
   #  delete_users(list_of_users=list_of_users, headers=headers)

@@ -1,5 +1,7 @@
 creds.py
 env_vars.py
+Authorization_Template.xlsx
+*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

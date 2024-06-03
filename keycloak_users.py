@@ -2,7 +2,7 @@
 import os
 import common, requests, json
 from vars.creds import password, client_id
-from vars.env_vars import users_url_query_params, users_url, token_url, username, users_to_keep, client_scopes_url, page_size
+from vars.env_vars import users_url_query_params, users_url, token_url, username, users_to_keep, client_scopes_url, page_size, users_file_path
 
 log = common.logging.getLogger(__name__)
 common.configure_logging()
@@ -40,7 +40,6 @@ def get_access_token():
     return access_token
 
 def get_users(headers, **kwargs):
-    users_file_path = 'list_of_users.json'
     users_url_query_params['briefRepresentation'] = 'True'
     log.debug("Users_url_query_params: %s", users_url_query_params)
     pagination = 0
@@ -66,9 +65,10 @@ def get_users(headers, **kwargs):
        #     log.info("Найдено пользователей: %" {len(all_users)})
             if len(list_of_users) < page_size:
                 break
+        except requests.exceptions.JSONDecodeError as e:
+            log.info("Json decoding error: ", e)
         except requests.exceptions.HTTPError as e:
             print(f"HTTP исключение: {e}\n Ответ сервера: {users_response.text} \n Сатус код: {users_response.status_code}")
-            raise
     return list_of_users
     
 

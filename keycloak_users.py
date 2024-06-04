@@ -2,7 +2,7 @@
 import os
 import common, requests, json
 from vars.creds import password, client_id
-from vars.env_vars import users_url_query_params, users_url, token_url, username, users_to_keep, client_scopes_url, page_size, users_file_path
+from vars.env_vars import users_url_query_params, users_url, token_url, username, users_to_keep, client_scopes_url, page_size, users_file_path, keycloak_url, realm_name
 
 log = common.logging.getLogger(__name__)
 common.configure_logging()
@@ -28,12 +28,12 @@ def get_access_token():
         'password': password
     }
     try:
-        token_response = requests.post(token_url, headers=headers, data=token_data)
+        token_response = requests.post(token_url, headers=headers, data=token_data, timeout=30)
         token_response.raise_for_status() 
         access_token = token_response.json()['access_token']
         log.debug("access_token: %s", access_token)
     except requests.exceptions.HTTPError as e:
-        log.error("HTTP исключение: %s", e)
+        log.error("HTTP exception: %s", e)
         log.error("Статус код: %s", token_response.status_code)
         log.error("Ответ сервера: %s", token_response.text)
         raise 
@@ -50,28 +50,43 @@ def get_users(headers, **kwargs):
         try:
             users_url_query_params['first'] = pagination
             log.debug("query starts")
-            users_response = requests.get(users_url, headers=headers, params=users_url_query_params)
+            users_response = requests.get(users_url, headers=headers, params=users_url_query_params, timeout=30)
             log.debug("query responce: %s ", users_response.status_code)
             users_response.raise_for_status()
             list_of_users = users_response.json()
          #   print(f"Список пользователей: {list_of_users}")
             with open('list_of_users.json', 'a') as json_file:
                json.dump(list_of_users, json_file)
-            print(repr(pagination))
-            print(repr(page_size))
-            print(repr(len(list_of_users)))
+            log.info("Page: %s", pagination)
+            log.info("Page size: %s", page_size)
+            log.info("The amount returned by the server: %s", len(list_of_users))
             pagination += page_size
         #    all_users = all_users.extend(list_of_users)
        #     log.info("Найдено пользователей: %" {len(all_users)})
             if len(list_of_users) < page_size:
                 break
+        except requests.exceptions.Timeout as e:
+                log.error("Timeout error: ", e)
+                continue
         except requests.exceptions.JSONDecodeError as e:
-            log.info("Json decoding error: ", e)
+            log.error("Json decoding error: ", e)
         except requests.exceptions.HTTPError as e:
-            print(f"HTTP исключение: {e}\n Ответ сервера: {users_response.text} \n Сатус код: {users_response.status_code}")
+            log.error("HTTP exception: %s", e)
     return list_of_users
     
-
+def validate_token(access_token, headers):
+    validation_url = f'{keycloak_url}/realms/{realm_name}/protocol/openid-connect/userinfo'
+    log.debug("VALIDATING TOKEN:  %s", access_token)
+ #   headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get(url=validation_url, headers=headers)
+    log.debug("STATUS:  %s", response.status_code)
+    if response.status_code == 200:
+        log.debug("Token is valid!")
+        return True
+    else:
+        log.debug("Token is invalid. Requesting new access_token...")
+        return False
+        
 def delete_users(list_of_users, **kwargs):
     confirmation = input("Вы уверены, что хотите удалить пользователей? Введите 'YES IM SURE' для подтверждения: ")
     if confirmation == 'YES IM SURE':
@@ -92,9 +107,11 @@ def get_client_scopes(client_scopes_url=client_scopes_url):
         client_scopes_response = requests.get(client_scopes_url, headers=headers)
         client_scopes_response.raise_for_status()
         client_scopes = client_scopes_response.json()
-        log.debug("Список client scopes: %s", client_scopes)
+        for client_scope in client_scopes:
+            log.debug("Список client scopes: %s", client_scope['id'])
+            log.debug("Список client scopes: %s", client_scope['name'])
     except requests.exceptions.HTTPError as e:
-        log.error("HTTP исключение: %s ", e)
+        log.error("HTTP exceptiom: %s ", e)
         log.error("Статус код: %s", client_scopes_response.status_code)
         log.error("Ответ сервера: %s", client_scopes_response.text)
         raise
@@ -110,5 +127,6 @@ if __name__ == "__main__":
     headers = set_headers(access_token)
   #  get_client_scopes()
     list_of_users = get_users(headers=headers)
+    validate_token(access_token, headers)
   #  list_of_disabled_users = get_disabled_users()
   #  delete_users(list_of_users=list_of_users, headers=headers)

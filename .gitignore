@@ -1,6 +1,7 @@
 creds.py
 env_vars.py
 Authorization_Template.xlsx
+token_file
 *.json
 
 # Byte-compiled / optimized / DLL files

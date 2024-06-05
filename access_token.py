@@ -1,4 +1,5 @@
-import os
+import os, datetime
+from jose import jwt
 import common, requests, json
 from vars.creds import password, client_id
 from vars.env_vars import token_url, username, token_file_path, keycloak_url, realm_name
@@ -9,7 +10,7 @@ class KeycloakTokenValidator:
     def __init__(self, token_file_path=token_file_path):
         self.token_file = token_file_path
         self.access_token = None
-        self.validation_url = f'{keycloak_url}/realms/{realm_name}/protocol/openid-connect/userinfo'
+        self.validation_url = f"{keycloak_url}/realms/{realm_name}/protocol/openid-connect/certs"
 
     def read_token(self):
         if os.path.isfile(self.token_file):
@@ -26,18 +27,34 @@ class KeycloakTokenValidator:
 
     def validate_token(self, access_token):
         validation_url = self.validation_url
-        log.debug("VALIDATING TOKEN:  %s", access_token)
         headers = {"Authorization": f"Bearer {access_token}"}
-
-        response = requests.get(url=validation_url, headers=headers)
-        log.debug("STATUS:  %s", response.status_code)
-
-        if response.status_code == 200:
-            log.debug("Token is valid!")
-            return True
-        else:
-            log.debug("Token is invalid. Requesting new access_token...")
+        try:
+            response = common.s.get(validation_url, headers)
+            response.raise_for_status()
+            public_keys = response.json()
+        except requests.exceptions.HTTPError as e:
+            print(f"Ошибка при получении открытого ключа: {e}")
             return False
+    
+        for key in public_keys['keys']:
+            try:
+                decoded_token = jwt.decode(access_token, key, algorithms=['RS256'])
+                log.debug("decode %s", decoded_token)
+                break
+            except jwt.exceptions.DecodeError
+        else:
+            print("Токен не прошел верификацию")
+            return False
+
+        expires_at = decoded_token.get('exp')
+        if expires_at:
+            expires_at = datetime.datetime.fromtimestamp(expires_at)
+            if expires_at < datetime.datetime.now():
+                print("Токен истек")
+                return False
+    
+        return True
+
 
     def request_new_token(self):
         headers = {
@@ -52,7 +69,7 @@ class KeycloakTokenValidator:
             'password': password
         }
         try:
-            token_response = requests.post(token_url, headers=headers, data=token_data)
+            token_response = common.s.post(token_url, headers=headers, data=token_data)
             token_response.raise_for_status() 
             access_token = token_response.json()['access_token']
             log.debug("new access token: %s", access_token)

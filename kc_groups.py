@@ -1,17 +1,18 @@
-import requests
+import requests, json, common
 from vars.env_vars import groups_url
 import json
 #groups_url_query_params = {'max': max_users}
-
+log = common.logging.getLogger(__name__)
+common.configure_logging()
 
 def get_groups(access_token, headers):
     try:
-        groups_responce = requests.get(groups_url, headers=headers)
+        groups_responce = common.s.get(groups_url, headers=headers)
         groups_responce.raise_for_status() 
         list_of_groups = groups_responce.json()
-        print(type(list_of_groups))
+        log.debug("Type of list of groups", type(list_of_groups))
         for group in list_of_groups:
-            print(group['name'])
+            log.info("Groups name", group['name'])
         with open('list_of_groups.json', 'w') as json_file:
              json_file.truncate(0) 
              json.dump(list_of_groups, json_file)

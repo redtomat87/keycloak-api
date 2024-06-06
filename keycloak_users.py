@@ -39,16 +39,13 @@ def get_access_token():
         raise 
     return access_token
 
-def get_users(headers, **kwargs):
-    users_url_query_params['briefRepresentation'] = 'True'
+def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
     log.debug("Users_url_query_params: %s", users_url_query_params)
-    pagination = 0
     if os.path.isfile(users_file_path):
         with open('list_of_users.json', 'w') as json_file:
             json_file.truncate(0) 
     while True:
         try:
-            users_url_query_params['first'] = pagination
             log.debug("query starts")
             users_response = common.s.get(users_url, headers=headers, params=users_url_query_params, timeout=(2, 20))
             log.debug("query responce: %s ", users_response.status_code)
@@ -57,10 +54,10 @@ def get_users(headers, **kwargs):
          #   print(f"Список пользователей: {list_of_users}")
             with open('list_of_users.json', 'a') as json_file:
                json.dump(list_of_users, json_file)
-            log.info("Page: %s", pagination)
+            log.info("Page: %s", users_url_query_params['first'])
             log.info("Page size: %s", page_size)
             log.info("The amount returned by the server: %s", len(list_of_users))
-            pagination += page_size
+            users_url_query_params['first'] += page_size
         #    all_users = all_users.extend(list_of_users)
        #     log.info("Найдено пользователей: %" {len(all_users)})
             if len(list_of_users) < page_size:

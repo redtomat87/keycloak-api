@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "keyckloack-api"
+version = "0.1.0"
+description = "Interaction with keycloak"
+authors = ["Vasilii.shmyr <mr_tomat@mail.ru>"]
+license = "GPLv3"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pyjwt = {extras = ["crypto"], version = "^2.8.0"}
+openpyxl = "^3.1.3"
+requests = "^2.32.3"
+
+[tool.poetry.group.dev.dependencies]
+python = "^3.12"
+pyjwt = {extras = ["crypto"], version = "^2.8.0"}
+openpyxl = "^3.1.3"
+requests = "^2.32.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -18,7 +18,7 @@ class KeycloakTokenValidator:
                 access_token = json.load(file)
                 log.debug("Fetched token data: %s", access_token)
                 if self.validate_token(access_token):
-                    log.info("Token validated and returned")
+                    log.info("Token from file validated and returned")
                     return access_token
                 else:
                     log.info("Token invalid and requested new one")

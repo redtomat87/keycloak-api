@@ -1,7 +1,7 @@
 import json, os, common
-from vars.creds import password, client_id
-from vars.env_vars import users_url_query_params, users_url, token_url, username, users_to_keep, client_scopes_url, page_size, users_file_path, keycloak_url, realm_name
+from vars.env_vars import users_url_query_params, users_url, users_to_keep, client_scopes_url, page_size, users_file_path, keycloak_url, realm_name
 from requests import exceptions as rexcept
+from access_token import KeycloakTokenValidator
 
 
 log = common.logging.getLogger(__name__)
@@ -14,30 +14,6 @@ def set_headers(access_token=None):
         }
     return headers
 
-def get_access_token():
- #   global access_token
-    headers = {
-        "Accept-Encoding": "gzip, deflate, br",
-        "response_type": "code",
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    token_data = {
-        'grant_type': 'password',
-        'client_id': client_id,
-        'username': username,
-        'password': password
-    }
-    try:
-        token_response = common.s.post(token_url, headers=headers, data=token_data)
-        token_response.raise_for_status() 
-        access_token = token_response.json()['access_token']
-        log.debug("access_token: %s", access_token)
-    except rexcept.HTTPError as e:
-        log.error("HTTP exception: %s", e)
-        log.error("Статус код: %s", token_response.status_code)
-        log.error("Ответ сервера: %s", token_response.text)
-        raise 
-    return access_token
 
 def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
     log.debug("Users_url_query_params: %s", users_url_query_params)
@@ -73,18 +49,6 @@ def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
             log.error("HTTP exception connection error: %s", e)
     return list_of_users
     
-def validate_token(access_token, headers):
-    validation_url = f'{keycloak_url}/realms/{realm_name}/protocol/openid-connect/userinfo'
-    log.debug("VALIDATING TOKEN:  %s", access_token)
- #   headers = {"Authorization": f"Bearer {access_token}"}
-    response = common.s.get(url=validation_url, headers=headers)
-    log.debug("STATUS:  %s", response.status_code)
-    if response.status_code == 200:
-        log.debug("Token is valid!")
-        return True
-    else:
-        log.debug("Token is invalid. Requesting new access_token...")
-        return False
         
 def delete_users(list_of_users, **kwargs):
     confirmation = input("Вы уверены, что хотите удалить пользователей? Введите 'YES IM SURE' для подтверждения: ")
@@ -99,7 +63,7 @@ def delete_users(list_of_users, **kwargs):
                 #     print(f'Failed to delete user with ID {user['id']}')
                     print(f"ID: {user['id']}, Username: {user['username']}")
     else:
-        print("Удаление пользователей отменено.")
+        log.info("Удаление пользователей отменено.")
 
 def get_client_scopes(client_scopes_url=client_scopes_url):
     try:
@@ -122,7 +86,8 @@ def get_disabled_users():
     return list_of_disabled_users
 
 if __name__ == "__main__":    
-    access_token = get_access_token()
+    validator = KeycloakTokenValidator()
+    access_token = validator.read_token()
     headers = set_headers(access_token)
   #  get_client_scopes()
     list_of_users = get_users(headers=headers)

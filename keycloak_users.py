@@ -30,7 +30,7 @@ def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
          #   print(f"Список пользователей: {list_of_users}")
             with open('list_of_users.json', 'a') as json_file:
                json.dump(list_of_users, json_file)
-            log.info("Page: %s", users_url_query_params['first'])
+            log.info("Total: %s", users_url_query_params['first'])
             log.info("Page size: %s", page_size)
             log.info("The amount returned by the server: %s", len(list_of_users))
             users_url_query_params['first'] += page_size

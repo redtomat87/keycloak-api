@@ -91,6 +91,6 @@ if __name__ == "__main__":
     headers = set_headers(access_token)
   #  get_client_scopes()
     list_of_users = get_users(headers=headers)
-    validate_token(access_token, headers)
+    KeycloakTokenValidator.validate_token(access_token, headers)
   #  list_of_disabled_users = get_disabled_users()
   #  delete_users(list_of_users=list_of_users, headers=headers)

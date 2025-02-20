@@ -1,8 +1,8 @@
-import os, datetime, common, requests, json
+import os, datetime, common, json, common
 from jwt import PyJWKClient, exceptions, decode
-import common, requests, json
 from vars.creds import password, client_id
 from vars.env_vars import token_url, username, token_file_path, keycloak_url, realm_name
+from requests import exceptions as rexcept
 log = common.logging.getLogger(__name__)
 common.configure_logging()
 
@@ -64,7 +64,7 @@ class KeycloakTokenValidator:
             'password': password
         }
         try:
-            token_response = requests.post(token_url, headers=headers, data=token_data)
+            token_response = common.s.post(token_url, headers=headers, data=token_data)
             token_response.raise_for_status()
             access_token = token_response.json().get('access_token')
             if not access_token:
@@ -74,7 +74,7 @@ class KeycloakTokenValidator:
             with open(self.token_file, 'w') as file:
                 json.dump(access_token, file)
             return access_token
-        except requests.exceptions.HTTPError as e:
+        except rexcept.HTTPError as e:
             log.error("HTTP exception: %s", e)
             log.error("Status code: %s", token_response.status_code)
             log.error("Response: %s", token_response.text)

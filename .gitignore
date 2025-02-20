@@ -3,6 +3,8 @@ env_vars.py
 Authorization_Template.xlsx
 token_file
 *.json
+*.pem
+*.crt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

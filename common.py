@@ -2,7 +2,7 @@ import logging
 from requests import Session
 from urllib3.util import Retry
 from requests.adapters import HTTPAdapter
-
+from  vars.env_vars import BASE_DIR
 # loggong config
 # CRITICAL = 50
 # ERROR    = 40
@@ -38,6 +38,8 @@ retries = Retry(
 # requests session
 s = Session()
 adapter = HTTPAdapter(max_retries=retries)
+s.verify = False
+# f'{BASE_DIR}\\vars\\ca.crt'
 s.mount('https://',  HTTPAdapter(max_retries=retries))
 s.mount('http://', adapter)
 print("common!")

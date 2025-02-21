@@ -19,11 +19,11 @@ def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
     log.debug("Users_url_query_params: %s", users_url_query_params)
     if os.path.isfile(users_file_path):
         with open('list_of_users.json', 'w') as json_file:
-            json_file.truncate(0) 
+            json_file.write('[]') 
     while True:
         try:
             log.debug("query starts")
-            users_response = common.s.get(users_url, headers=headers, params=users_url_query_params, timeout=(2, 20))
+            users_response = common.s.get(users_url, headers=headers, params=users_url_query_params, timeout=(2, 40))
             log.debug("query responce: %s ", users_response.status_code)
             users_response.raise_for_status()
             list_of_users = users_response.json()

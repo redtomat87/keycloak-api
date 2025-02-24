@@ -18,35 +18,60 @@ def set_headers(access_token=None):
 def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
     log.debug("Users_url_query_params: %s", users_url_query_params)
     if os.path.isfile(users_file_path):
-        with open('list_of_users.json', 'w') as json_file:
-            json_file.write('[]') 
+        with open(users_file_path, 'w') as json_file:
+            json_file.write('[\n') 
+
+    is_first_chunk = True
+
     while True:
         try:
             log.debug("query starts")
-            users_response = common.s.get(users_url, headers=headers, params=users_url_query_params, timeout=(2, 40))
+            users_response = common.s.get(
+                users_url,
+                headers=headers,
+                params=users_url_query_params,
+                timeout=(2, 40))
             log.debug("query responce: %s ", users_response.status_code)
             users_response.raise_for_status()
-            list_of_users = users_response.json()
-         #   print(f"Список пользователей: {list_of_users}")
-            with open('list_of_users.json', 'a') as json_file:
-               json.dump(list_of_users, json_file)
+            users_chunk = users_response.json()
+            if not users_chunk:
+                break
+            if not isinstance(users_chunk, list):
+                log.error("Invalid response format")
+                break
+            with open(users_file_path, 'a') as f:
+                for user in users_chunk:
+                    if is_first_chunk:
+                        is_first_chunk = False
+                    else:
+                        f.write(',\n')
+                    json.dump(user, f)
             log.info("Total: %s", users_url_query_params['first'])
             log.info("Page size: %s", page_size)
-            log.info("The amount returned by the server: %s", len(list_of_users))
-            users_url_query_params['first'] += page_size
-            if len(list_of_users) < page_size:
+            log.info("The amount returned by the server: %s", len(users_chunk))
+            users_url_query_params['first'] += len(users_chunk)
+            if len(users_chunk) < page_size:
                 break
         except rexcept.Timeout as e:
-                log.error("Timeout error: ", e)
-                continue
+            log.error("Timeout error: %s", e)
+            continue
         except rexcept.JSONDecodeError as e:
             log.error("Json decoding error: %s", e)
         except rexcept.HTTPError as e:
             log.error("HTTP exception: %s", e)
         except rexcept.ConnectionError as e:
             log.error("HTTP exception connection error: %s", e)
-    return list_of_users
+        except KeyboardInterrupt:
+            with open(users_file_path, 'a') as f:
+                f.write('\n]')
+            raise
+        except Exception as e:
+            log.error("Fatal error: %s", e)
+            break
     
+    with open(users_file_path, 'a') as f:
+        f.write('\n]')
+    return users_chunk
         
 def delete_users(list_of_users, **kwargs):
     confirmation = input("Вы уверены, что хотите удалить пользователей? Введите 'YES IM SURE' для подтверждения: ")

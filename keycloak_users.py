@@ -52,6 +52,9 @@ def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
             users_url_query_params['first'] += len(users_chunk)
             if len(users_chunk) < page_size:
                 break
+        except rexcept.ChunkedEncodingError as e:
+            log.error("Response ended prematurely %s", e)
+            continue
         except rexcept.Timeout as e:
             log.error("Timeout error: %s", e)
             continue
@@ -65,9 +68,9 @@ def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
             with open(users_file_path, 'a') as f:
                 f.write('\n]')
             raise
-        except Exception as e:
-            log.error("Fatal error: %s", e)
-            break
+        # except Exception as e:
+        #     log.error("Fatal error: %s", e)
+        #     break
     
     with open(users_file_path, 'a') as f:
         f.write('\n]')
@@ -114,7 +117,7 @@ if __name__ == "__main__":
     headers = set_headers(access_token)
     # log.debug("Headers: %s", headers)
   #  get_client_scopes()
-    # list_of_users = get_users(headers=headers)
+    list_of_users = get_users(headers=headers)
     validator.validate_token(access_token)
   #  list_of_disabled_users = get_disabled_users()
   #  delete_users(list_of_users=list_of_users, headers=headers)

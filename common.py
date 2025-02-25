@@ -26,10 +26,11 @@ retries = Retry(
     backoff_factor=0.1,
     status_forcelist=[500, 501, 502, 503, 504],
     allowed_methods=frozenset({'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PUT', 'TRACE'}),
-    read=2,
-    connect=2,
-    status=2,
-    other=2
+    read=9,
+    connect=9,
+    status=9,
+    other=9,
+    raise_on_status=False
 )
 
 
@@ -40,6 +41,6 @@ s = Session()
 adapter = HTTPAdapter(max_retries=retries)
 s.verify = False
 # f'{BASE_DIR}\\vars\\ca.crt'
-s.mount('https://',  HTTPAdapter(max_retries=retries))
-s.mount('http://', adapter)
+s.mount('https://',  adapter)
+# s.mount('http://', adapter)
 print("common!")

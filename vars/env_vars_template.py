@@ -23,7 +23,7 @@ users_url_query_params = {
 
 #files 
 users_file_path = (BASE_DIR / 'list_of_users.json') 
-token_file_path = (BASE_DIR / 'token_file')
+token_file_path = (BASE_DIR / 'token_file.json')
 
 # Your username
 username = '**keycloak service account name**'

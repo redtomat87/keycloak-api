@@ -15,9 +15,10 @@ class KeycloakTokenValidator:
     def read_token(self):
         if os.path.isfile(self.token_file):
             with open(self.token_file, 'r') as file:
-                access_token = json.load(file)
-                log.debug("Fetched token data: %s", access_token)
-                if self.validate_token(access_token):
+                token_data = json.load(file)
+                log.debug("Fetched token data: %s", token_data)
+                access_token = token_data.get('access_token')
+                if access_token and self.validate_token(access_token):
                     log.info("Token from file validated and returned")
                     return access_token
                 else:
@@ -66,29 +67,26 @@ class KeycloakTokenValidator:
         try:
             token_response = common.s.post(token_url, headers=headers, data=token_data)
             token_response.raise_for_status()
-            access_token = token_response.json().get('access_token')
-            if not access_token:
+            access_token_data = token_response.json()
+            if not access_token_data.get('access_token'):
                 log.error("No access token found in response")
                 return None
-            log.debug("New access token: %s", access_token)
+            log.debug("New access token: %s", access_token_data)
             with open(self.token_file, 'w') as file:
-                json.dump(access_token, file)
-            return access_token
+                json.dump(access_token_data, file)
+            return access_token_data
         except rexcept.HTTPError as e:
             log.error("HTTP exception: %s", e)
             log.error("Status code: %s", token_response.status_code)
             log.error("Response: %s", token_response.text)
         except json.JSONDecodeError as e:
             log.error("JSON decode error: %s", e)
-        return access_token
+        return None
 
-
-
-    def write_token(self, access_token):
-        new_token_data = {"access_token": access_token}
+    def write_token(self, access_token_data):
         try:
             with open(self.token_file, 'w') as file:
-                json.dump(new_token_data, file)
+                json.dump(access_token_data, file)
         except Exception as e:
             log.error("Some error: %s", e)
 
@@ -97,9 +95,9 @@ if __name__ == '__main__':
     validator = KeycloakTokenValidator()
     access_token = validator.read_token()
     # log.debug("Main token: %s: ", access_token)
-    # if access_token is None:
-    #     access_token = validator.request_new_token()
-    # if validator.validate_token(access_token):
-    #     print("Token is valid!")
-    # else:
-    #     print("Token is invalid!")
+    if access_token is None:
+        access_token = validator.request_new_token()
+    if validator.validate_token(access_token):
+        print("Token is valid!")
+    else:
+        print("Token is invalid!")

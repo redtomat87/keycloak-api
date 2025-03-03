@@ -30,7 +30,7 @@ def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
                 users_url,
                 headers=headers,
                 params=users_url_query_params,
-                timeout=(2, 40))
+                timeout=(2, 300))
             log.debug("query responce: %s ", users_response.status_code)
             users_response.raise_for_status()
             users_chunk = users_response.json()
@@ -53,8 +53,9 @@ def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
             if len(users_chunk) < page_size:
                 break
         except rexcept.ChunkedEncodingError as e:
-            log.error("Response ended prematurely %s", e)
-            continue
+            log.error("last chunk %s", users_chunk)
+            log.error("Response ended prematurely, All users were requested  %s", e)
+            break
         except rexcept.Timeout as e:
             log.error("Timeout error: %s", e)
             continue

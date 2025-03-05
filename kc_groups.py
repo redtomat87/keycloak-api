@@ -1,4 +1,4 @@
-import requests, json, common
+import json, common
 from vars.env_vars import groups_url, page, page_size, groups_url_query_params
 from access_token import KeycloakTokenValidator
 from keycloak_users import set_headers

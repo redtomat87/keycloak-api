@@ -5,6 +5,7 @@ token_file
 *.json
 *.pem
 *.crt
+*.cer
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

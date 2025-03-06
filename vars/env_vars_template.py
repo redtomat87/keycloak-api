@@ -25,6 +25,9 @@ users_url_query_params = {
 users_file_path = (BASE_DIR / 'list_of_users.json') 
 token_file_path = (BASE_DIR / 'token_file.json')
 
+#Keycloak certificates
+saml_assertion_cert_file = (BASE_DIR / 'kc_certs' / 'YandexCloud_test-keycloak.cer')
+
 # Your username
 username = '**keycloak service account name**'
 
@@ -32,3 +35,6 @@ username = '**keycloak service account name**'
 users_to_keep = ['list', 'of', 'useres to keep when you delete users']
 
 
+# Upload certificate for specific client
+client_uuid = '***'
+cert_type = 'saml.encryption' # specify atribute to upload

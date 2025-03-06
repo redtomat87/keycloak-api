@@ -75,5 +75,5 @@ def get_cildren_groups(headers, groups_url_query_params, group_id):
 if __name__ == "__main__":    
     validator = KeycloakTokenValidator()
     access_token = validator.read_token()
-    headers = set_headers(access_token)
+    headers = common.set_headers(access_token)
     groups = get_groups(headers)

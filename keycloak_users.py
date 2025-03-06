@@ -7,14 +7,6 @@ from access_token import KeycloakTokenValidator
 log = common.logging.getLogger(__name__)
 common.configure_logging()
 
-def set_headers(access_token=None):
-    headers = {
-        'Content-Type': 'application/json',
-        "Authorization": f"Bearer {access_token}" if access_token else ""
-        }
-    return headers
-
-
 def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
     log.debug("Users_url_query_params: %s", users_url_query_params)
     if os.path.isfile(users_file_path):
@@ -116,7 +108,7 @@ def get_disabled_users():
 if __name__ == "__main__":    
     validator = KeycloakTokenValidator()
     access_token = validator.read_token()
-    headers = set_headers(access_token)
+    headers = common.set_headers(access_token)
     # log.debug("Headers: %s", headers)
   #  get_client_scopes()
     # list_of_users = get_users(headers=headers)

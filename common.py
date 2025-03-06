@@ -18,6 +18,13 @@ def configure_logging():
         format="[%(asctime)s.%(msecs)03d] %(module)s:%(lineno)d %(levelname)s - %(message)s",
     )
 
+def set_headers(access_token=None):
+    headers = {
+        'Content-Type': 'application/json',
+        "Authorization": f"Bearer {access_token}" if access_token else ""
+        }
+    return headers
+
 
 #configuring retries
 

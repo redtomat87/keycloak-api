@@ -3,7 +3,6 @@ import json, os, common
 from vars.env_vars import events_url_query_params, events_url, users_to_keep, client_scopes_url, page_size, events_file_path, keycloak_url, realm_name, events_url
 from requests import exceptions as rexcept
 from access_token import KeycloakTokenValidator
-from keycloak_users import set_headers
 
 log = common.logging.getLogger(__name__)
 common.configure_logging()
@@ -45,6 +44,6 @@ def get_events(headers, events_url_query_params=events_url_query_params, **kwarg
 if __name__ == "__main__":    
     validator = KeycloakTokenValidator()
     access_token = validator.read_token()
-    headers = set_headers(access_token)
+    headers = common.set_headers(access_token)
     events = get_events(headers)
     

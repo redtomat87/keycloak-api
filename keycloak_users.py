@@ -29,7 +29,7 @@ def get_users(headers, users_url_query_params=users_url_query_params, **kwargs):
             if not users_chunk:
                 break
             if not isinstance(users_chunk, list):
-                log.error("Invalid response format")
+                log.error("Invalid response format", type(users_chunk))
                 break
             with open(users_file_path, 'a') as f:
                 for user in users_chunk:

@@ -1,9 +1,12 @@
-import common
-from vars.env_vars import keycloak_url, realm_name, saml_assertion_cert_file, client_uuid, cert_type
+from vars.env_vars import keycloak_url, realm_name, saml_assertion_cert_file, certs_validation_file_path, client_uuid, cert_type
+from cryptography.x509 import load_der_x509_certificate, load_pem_x509_certificate
 from requests import exceptions as rexcept
 from access_token import KeycloakTokenValidator
-from datetime import datetime
-from dateutil.parser import parse as parse_date
+from datetime import datetime, timezone
+import common
+import base64
+import json
+
 
 log = common.logging.getLogger(__name__)
 common.configure_logging()
@@ -15,7 +18,7 @@ def read_pem_certificate() -> str:
     except FileNotFoundError:
         raise ValueError("Certificate file not found")
 
-def post_certificate(client_uuid, attr, headers) -> None:
+def post_certificate(client_uuid: str, attr: str, headers: dict) -> None:
     files = {
         'keystoreFormat': (None, 'Certificate PEM'),
         'file': (
@@ -45,7 +48,7 @@ def post_certificate(client_uuid, attr, headers) -> None:
         log.error("Iterrupted by user: %s", e)
         raise
 
-def get_list_of_clients(headers) -> list:
+def get_list_of_clients(headers: dict) -> list:
     get_clients_url = f'{keycloak_url}/admin/realms/{realm_name}/clients'
     query_parameters =  {
                           'max': 100,
@@ -102,7 +105,7 @@ def get_list_of_clients(headers) -> list:
         "Total clients fetched: %d", 
         len(all_clients)
         )
-        return all_clients
+    return all_clients
 
 def get_clients_certificates_info(headers: dict) -> dict:
     """Retrieves client certificates information at format:
@@ -133,35 +136,40 @@ def get_clients_certificates_info(headers: dict) -> dict:
             cert_info = response.json()
             log.debug("Raw cert info: %s", cert_info)
 
+            cert_data = cert_info.get('certificate')
+            log.debug("Raw cert_data: %s", cert_data)
+            if not cert_data:
+                results[client_name]['error'] = "No certificate found"
+                continue
+
+            try:
+                if '-----BEGIN CERTIFICATE-----' in cert_data:
+                    cert = load_pem_x509_certificate(cert_data)
+                else:
+                    der_data = base64.b64decode(cert_data)
+                    cert = load_der_x509_certificate(der_data)
+            except Exception as e:
+                results[client_name]['error'] = f"Certificate decode error: {str(e)}"
+                continue
+
+            expiry_date_aware = cert.not_valid_after_utc
+            now = datetime.now(timezone.utc)
+            
+            results[client_name]['expiry_date'] = expiry_date_aware
+            results[client_name]['valid'] = expiry_date_aware > now
+
         except rexcept.HTTPError as e:
             if e.response.status_code == 404:
                 results[client_name]['error'] = "No certificates found"
             else:
                 results[client_name]['error'] = f"HTTP Error: {e.response.status_code}"
-            continue
-
         except Exception as e:
-            results[client_name]['error'] = str(e)
-            break
-        expiry_date_str = cert_info.get('certificateInfo', {}).get('expiryDate')
-        
-        if not expiry_date_str:
-            results[client_name]['error'] = "No expiry date in response"
-            continue
+            results[client_name]['error'] = f"Unexpected error: {str(e)}"
+    log.debug("Results: %s", results)
 
-        try:
-            expiry_date = parse_date(expiry_date_str)
-            now = datetime.now(expiry_date.tzinfo)
-            
-            results[client_name]['expiry_date'] = expiry_date
-            results[client_name]['valid'] = expiry_date > now
-
-        except Exception as e:
-            results[client_name]['error'] = f"Date parse error: {str(e)}"
-
+    with open(certs_validation_file_path, 'a') as f:
+        json.dump(results, f, default=str, indent=2)
     return results
-
-
 
 if __name__ == "__main__":    
     validator = KeycloakTokenValidator()

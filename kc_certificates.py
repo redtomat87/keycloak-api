@@ -1,12 +1,17 @@
-from vars.env_vars import keycloak_url, realm_name, saml_assertion_cert_file, certs_validation_file_path, client_uuid, cert_type
+from vars.env_vars import (
+    keycloak_url, realm_name, saml_assertion_cert_file, 
+    certs_validation_file_path, client_uuid, cert_type
+)
 from cryptography.x509 import load_der_x509_certificate, load_pem_x509_certificate
 from requests import exceptions as rexcept
 from access_token import KeycloakTokenValidator
 from datetime import datetime, timezone
+from fastapi import FastAPI
 import common
 import base64
 import json
 
+app = FastAPI()
 
 log = common.logging.getLogger(__name__)
 common.configure_logging()
@@ -171,6 +176,10 @@ def get_clients_certificates_info(headers: dict) -> dict:
         json.dump(results, f, default=str, indent=2)
     return results
 
+@app.get("/metrics/", description="return certificate expiration metrics from keycloak")
+def metrics():
+    return f'hello, this is my metrics'
+
 if __name__ == "__main__":    
     validator = KeycloakTokenValidator()
     access_token = validator.read_token()
@@ -183,8 +192,4 @@ if __name__ == "__main__":
  #   clients = get_list_of_clients(headers)
     get_clients_certificates_info(headers)
     # log.debug("Headers: %s", headers)
-  #  get_client_scopes()
-    # list_of_users = get_users(headers=headers)
     validator.validate_token(access_token)
-  #  list_of_disabled_users = get_disabled_users()
-  #  delete_users(list_of_users=list_of_users, headers=headers)

@@ -1,15 +1,21 @@
+import common, base64, json, time
+from metrics import CERT_EXPIRY_GAUGE, CERT_VALID_GAUGE, LAST_UPDATE_GAUGE
 from vars.env_vars import (
     keycloak_url, realm_name, saml_assertion_cert_file, 
     certs_validation_file_path, client_uuid, cert_type
 )
 from cryptography.x509 import load_der_x509_certificate, load_pem_x509_certificate
+from prometheus_client import Gauge, generate_latest, REGISTRY
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from requests import exceptions as rexcept
 from access_token import KeycloakTokenValidator
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI
-import common
-import base64
-import json
+from threading import Lock
+
+cert_cache = {}
+cache_lock = Lock()
 
 app = FastAPI()
 
@@ -72,6 +78,11 @@ def get_list_of_clients(headers: dict) -> list:
                 timeout=(2, 60)
             )
             response.raise_for_status()
+            if response.status_code == 401:
+                validator = KeycloakTokenValidator()
+                access_token = validator.read_token()
+                validator.validate_token(access_token)
+              
             clients_chunk = response.json()
             if not clients_chunk:
                 break
@@ -172,24 +183,62 @@ def get_clients_certificates_info(headers: dict) -> dict:
             results[client_name]['error'] = f"Unexpected error: {str(e)}"
     log.debug("Results: %s", results)
 
-    with open(certs_validation_file_path, 'a') as f:
-        json.dump(results, f, default=str, indent=2)
+    # with open(certs_validation_file_path, 'a') as f:
+    #     json.dump(results, f, default=str, indent=2)
     return results
 
-@app.get("/metrics/", description="return certificate expiration metrics from keycloak")
+def update_cert_cache():
+    global cert_cache
+    validator = KeycloakTokenValidator()
+    try:
+        access_token = validator.read_token()
+        validator.validate_token(access_token)
+        headers = common.set_headers(access_token)
+        new_data = get_clients_certificates_info(headers)
+        
+        with cache_lock:
+            cert_cache = new_data
+            LAST_UPDATE_GAUGE.set_to_current_time()
+            log.info("Certificate cache updated successfully")
+        
+        update_prometheus_metrics(new_data)
+        
+    except Exception as e:
+        log.error(f"Failed to update certificate cache: {str(e)}")
+
+def update_prometheus_metrics(data):
+    CERT_EXPIRY_GAUGE.clear()
+    CERT_VALID_GAUGE.clear()
+    
+    for client_id, info in data.items():
+        error_label = info['error'] or 'none'
+        
+        if info['expiry_date']:
+            expiry_seconds = (info['expiry_date'] - datetime.now(timezone.utc)).total_seconds()
+            CERT_EXPIRY_GAUGE.labels(client_id=client_id, error=error_label).set(expiry_seconds)
+        
+        valid_value = 1 if info['valid'] else 0
+        CERT_VALID_GAUGE.labels(client_id=client_id, error=error_label).set(valid_value)
+
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    update_cert_cache,
+    trigger=IntervalTrigger(hours=24),
+    next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    id='certificate_validation_job',
+    replace_existing=True
+)
+scheduler.start()
+
+
+@app.get("/metrics", description="Return certificate expiration metrics from Keycloak")
 def metrics():
-    return f'hello, this is my metrics'
+    return generate_latest(REGISTRY)
+
 
 if __name__ == "__main__":    
-    validator = KeycloakTokenValidator()
-    access_token = validator.read_token()
-    headers = common.set_headers(access_token)
-    # post_certificate(
-    #         client_uuid=client_uuid,
-    #         attr=cert_type,
-    #         headers=headers,
-    #     )
- #   clients = get_list_of_clients(headers)
-    get_clients_certificates_info(headers)
-    # log.debug("Headers: %s", headers)
-    validator.validate_token(access_token)
+    update_cert_cache()
+    
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

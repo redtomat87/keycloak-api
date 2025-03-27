@@ -1,7 +1,7 @@
 from prometheus_client import Gauge
 
 CERT_EXPIRY_GAUGE = Gauge(
-    'keycloak_client_cert_expiry_seconds',
+    'keycloak_client_cert_expiry_days',
     'Seconds until certificate expiration',
     ['client_id', 'error']
 )

@@ -13,10 +13,10 @@ from access_token import KeycloakTokenValidator
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI,  Response
 from typing import Dict, Any
-from threading import Lock
+from threading import RLock
 
 cert_cache: Dict[str, Dict[str, Any]] = {}
-cache_lock = Lock()
+cache_lock = RLock()
 
 app = FastAPI()
 

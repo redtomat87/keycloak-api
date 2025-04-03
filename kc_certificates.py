@@ -9,7 +9,7 @@ from prometheus_client import Gauge, generate_latest, REGISTRY
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from requests import exceptions as rexcept
-from access_token import KeycloakTokenValidator
+from access_token import validator
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI,  Response
 from typing import Dict, Any
@@ -65,7 +65,7 @@ def get_list_of_clients(headers: dict) -> list:
     all_clients = []
     page = 0
     page_size = 100
-    get_clients_url = f'{keycloak_url}/admin/realms/{realm_name}/clients'
+    get_clients_url = f'{config.keycloak_url}/admin/realms/{config.realm_name}/clients'
     query_parameters =  {
                           'max': page_size,
                           'first': page,
@@ -84,7 +84,6 @@ def get_list_of_clients(headers: dict) -> list:
             )
             response.raise_for_status()
             if response.status_code == 401:
-                validator = KeycloakTokenValidator()
                 access_token = validator.read_token()
                 validator.validate_token(access_token)
               
@@ -146,7 +145,7 @@ def get_clients_certificates_info(headers: dict) -> dict:
         results[client_name] = {"valid": False, "expiry_date": None, "error": None}
 
         cert_url = (
-            f"{keycloak_url}/admin/realms/{realm_name}/clients/"
+            f"{config.keycloak_url}/admin/realms/{config.realm_name}/clients/"
             f"{client_id}/certificates/saml.encryption"
         )
 
@@ -193,7 +192,6 @@ def get_clients_certificates_info(headers: dict) -> dict:
 
 def update_cert_cache():
     global cert_cache
-    validator = KeycloakTokenValidator()
     try:
         access_token = validator.read_token()
         validator.validate_token(access_token)

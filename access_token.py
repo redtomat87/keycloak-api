@@ -71,10 +71,11 @@ class KeycloakTokenValidator:
             if not access_token_data.get('access_token'):
                 log.error("No access token found in response")
                 return None
+            access_token = access_token_data.get('access_token')
             log.debug("New access token: %s", access_token_data)
             with open(self.token_file, 'w') as file:
                 json.dump(access_token_data, file)
-            return access_token_data
+            return access_token
         except rexcept.HTTPError as e:
             log.error("HTTP exception: %s", e)
             log.error("Status code: %s", token_response.status_code)

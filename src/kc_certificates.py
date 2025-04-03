@@ -247,6 +247,14 @@ def metrics():
 if __name__ == "__main__":    
     
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_level=os.getenv("UVICORN_LOG_LEVEL", "info").lower(),
+        access_log=os.getenv("UVICORN_ACCESS_LOG", "false").lower() == "true"
+    )
     # log.debug(f"datetime.now(timezone.utc): {datetime.now(timezone.utc)}")
     # log.debug(f"timedelta 10: {timedelta(seconds=10)}")

@@ -1,31 +1,27 @@
-import os, datetime, common, json, common
+import datetime, common, json
 from jwt import PyJWKClient, exceptions, decode
-from vars.creds import password, client_id
-from vars.env_vars import token_url, username, token_file_path, keycloak_url, realm_name
+from models.settings_model import config
 from requests import exceptions as rexcept
+from functools import lru_cache
+
 log = common.logging.getLogger(__name__)
 common.configure_logging()
 
 class KeycloakTokenValidator:
-    def __init__(self, token_file_path=token_file_path):
-        self.token_file = token_file_path
-        self.access_token = None
-        self.validation_url = f"{keycloak_url}/realms/{realm_name}/protocol/openid-connect/certs"
+    def __init__(self):
+        self.validation_url = f"{config.keycloak_url}/realms/{config.realm_name}/protocol/openid-connect/certs"
+
+    @lru_cache(maxsize=1)
+    def get_cached_token(self):
+        return self.request_new_token()
 
     def read_token(self):
-        if os.path.isfile(self.token_file):
-            with open(self.token_file, 'r') as file:
-                token_data = json.load(file)
-                log.debug("Fetched token data: %s", token_data)
-                access_token = token_data.get('access_token')
-                if access_token and self.validate_token(access_token):
-                    log.info("Token from file validated and returned")
-                    return access_token
-                else:
-                    log.info("Token invalid and requested new one")
-                    return self.request_new_token()
+        access_token = self.get_cached_token()
+        if access_token and self.validate_token(access_token):
+            log.info("Cached token validated and returned")
+            return access_token
         else:
-            log.info("Token file didn't finded. Requesting new token")
+            log.info("Cached token invalid or not found. Requesting new token")
             return self.request_new_token()
 
     def validate_token(self, access_token):
@@ -60,21 +56,19 @@ class KeycloakTokenValidator:
         }
         token_data = {
             'grant_type': 'password',
-            'client_id': client_id,
-            'username': username,
-            'password': password
+            'client_id': config.client_id,
+            'username': config.username,
+            'password': config.password
         }
         try:
-            token_response = common.s.post(token_url, headers=headers, data=token_data)
+            token_response = common.s.post(config.token_url, headers=headers, data=token_data)
             token_response.raise_for_status()
             access_token_data = token_response.json()
-            if not access_token_data.get('access_token'):
+            access_token = access_token_data.get('access_token')
+            if not access_token:
                 log.error("No access token found in response")
                 return None
-            access_token = access_token_data.get('access_token')
-            log.debug("New access token: %s", access_token_data)
-            with open(self.token_file, 'w') as file:
-                json.dump(access_token_data, file)
+            log.debug("New access token: %s", access_token)
             return access_token
         except rexcept.HTTPError as e:
             log.error("HTTP exception: %s", e)
@@ -84,21 +78,21 @@ class KeycloakTokenValidator:
             log.error("JSON decode error: %s", e)
         return None
 
-    def write_token(self, access_token_data):
-        try:
-            with open(self.token_file, 'w') as file:
-                json.dump(access_token_data, file)
-        except Exception as e:
-            log.error("Some error: %s", e)
 
+try:
+    validator = KeycloakTokenValidator()
+except Exception as e:
+    print(f"Configuration error: {str(e)}")
+    exit(1)
 
 if __name__ == '__main__':
     validator = KeycloakTokenValidator()
     access_token = validator.read_token()
-    # log.debug("Main token: %s: ", access_token)
-    if access_token is None:
+
+    if not access_token:
         access_token = validator.request_new_token()
-    if validator.validate_token(access_token):
+
+    if access_token and validator.validate_token(access_token):
         print("Token is valid!")
     else:
         print("Token is invalid!")

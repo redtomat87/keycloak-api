@@ -1,5 +1,5 @@
 import common, base64
-from metrics import CERT_EXPIRY_GAUGE, CERT_VALID_GAUGE, LAST_UPDATE_GAUGE
+from metrics.metrics_model import CERT_EXPIRY_GAUGE, CERT_VALID_GAUGE, LAST_UPDATE_GAUGE
 from vars.env_vars import (
     keycloak_url, realm_name, saml_assertion_cert_file, 
     certs_validation_file_path, client_uuid, cert_type
@@ -14,6 +14,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI,  Response
 from typing import Dict, Any
 from threading import RLock
+from models.settings_model import config
 
 cert_cache: Dict[str, Dict[str, Any]] = {}
 cache_lock = RLock()

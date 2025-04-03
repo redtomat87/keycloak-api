@@ -16,6 +16,7 @@ cryptography = "^44.0.2"
 fastapi = {extras = ["all"], version = "^0.115.12"}
 prometheus-client = "^0.21.1"
 apscheduler = "^3.11.0"
+pydantic = "^2.11.1"
 
 [tool.poetry.group.dev.dependencies]
 python = "^3.12"

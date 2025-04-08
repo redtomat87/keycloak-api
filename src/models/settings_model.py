@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     page_size: int = 10
     page: int = 0
     username: str = ''
+
+    users_file_path: str = str(BASE_DIR / 'list_of_users.json')
+    token_file_path: str = str(BASE_DIR / 'token_file.json')
+    certs_validation_file_path: str = str(BASE_DIR / 'certs_validation.json')
     
     @computed_field
     @property
@@ -34,10 +38,6 @@ class Settings(BaseSettings):
     @property
     def client_scopes_url(self) -> str:
         return f'{self.keycloak_url}/admin/realms/{self.realm_name}/client-scopes'
-
-    users_file_path: str = str(BASE_DIR / 'list_of_users.json')
-    token_file_path: str = str(BASE_DIR / 'token_file.json')
-    certs_validation_file_path: str = str(BASE_DIR / 'certs_validation.json')
     
     request_timeout: int = Field(
         default=30,
@@ -55,7 +55,7 @@ class Settings(BaseSettings):
         }
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(BASE_DIR / ".env"),
         env_file_encoding="utf-8",
         env_prefix="KCE_",
         case_sensitive=False,
@@ -68,3 +68,10 @@ try:
 except Exception as e:
     print(f"Configuration error: {str(e)}")
     exit(1)
+
+if __name__ == '__main__':
+    print(config)
+    env_path = Path(BASE_DIR, ".env")
+    print("Путь к .env:", env_path)
+    print("Файл .env существует?", env_path.exists())
+
